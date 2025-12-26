@@ -1,6 +1,7 @@
 package com.example.vacationchecker.service;
 
 import com.example.vacationchecker.model.VacationEntry;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+@Profile("demo")
 public class InMemoryVacationScheduleService implements VacationScheduleService {
 
     private final Map<String, List<VacationEntry>> vacationsByUser = Map.of(

@@ -1,6 +1,6 @@
 # vacation-checker
 
-Spring Boot Slack slash-command app that surfaces upcoming, reviewer-approved vacation plans from Jira for individuals, Slack user groups, or channels.
+Spring Boot Slack slash-command app that surfaces upcoming, reviewer-approved vacation plans from Tempo Planner (Capacity Planner) for individuals, Slack user groups, or channels.
 
 ## Running locally
 
@@ -15,12 +15,12 @@ Spring Boot Slack slash-command app that surfaces upcoming, reviewer-approved va
 - `/vacation @group` — resolves the Slack user group, and returns a timeline for each member in one response.
 - `/vacation #channel` — resolves the channel to its members and returns their timelines in the same response.
 
-This sample ships with in-memory data for Jira tickets and Slack membership; integrate `VacationScheduleService` and `SlackDirectoryService` with real APIs to connect to your environment.
+This sample ships with in-memory data for Slack membership, and it uses the Tempo Planner API for real vacation timelines. You can still wire Jira-based time-off logic by swapping the `VacationScheduleService` implementation.
 
 ## Integration configuration
-For production hookups to Slack and Jira/Capacity Planner, capture the required tokens, URLs, and field mappings listed in [`docs/integration.md`](docs/integration.md). Plug them into your Spring configuration when you replace the in-memory services with real clients.
+For production hookups to Slack and Tempo Planner, capture the required tokens, URLs, and field mappings listed in [`docs/integration.md`](docs/integration.md).
 
 ## Environment variables
-Copy `env.example` to `.env` (or export the variables in your shell) and replace the placeholders with your real Slack and Jira/Capacity Planner credentials. Spring Boot will automatically consume these environment variables when you wire the production integrations.
+Copy `env.example` to `.env` (or export the variables in your shell) and replace the placeholders with your real Slack, Jira (optional), and Tempo Planner credentials. Spring Boot will automatically consume these environment variables when you wire the production integrations.
 
-The application reads the values at startup to configure its timezone window for the `/vacation` command and logs which Slack/Jira/Capacity Planner endpoints are wired (masking secrets). Set `APP_TIMEZONE` to the zone you want to use when computing the one-month lookahead.
+The application reads the values at startup to configure its timezone window for the `/vacation` command and logs which Slack/Tempo Planner endpoints are wired (masking secrets). Set `APP_TIMEZONE` to the zone you want to use when computing the one-month lookahead.

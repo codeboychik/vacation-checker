@@ -33,6 +33,14 @@ public class IntegrationSettingsLogger {
         log.info("Configured Jira projects: {}", defaultIfBlank(jiraProperties.projectKeys(), "<not set>"));
         log.info("Configured Capacity Planner URL: {}",
                 defaultIfBlank(capacityPlannerProperties.baseUrl(), "<not set>"));
+        log.info("Configured Capacity Planner plans path: {}",
+                defaultIfBlank(capacityPlannerProperties.plansPath(), "<not set>"));
+        log.info("Configured Capacity Planner schedule ID: {}",
+                defaultIfBlank(capacityPlannerProperties.scheduleId(), "<not set>"));
+        log.info("Configured Capacity Planner approved statuses: {}",
+                defaultIfBlank(join(capacityPlannerProperties.approvedStatuses()), "<not set>"));
+        log.info("Configured Capacity Planner time-off types: {}",
+                defaultIfBlank(join(capacityPlannerProperties.timeOffTypes()), "<not set>"));
         log.info("Application timezone: {}", applicationProperties.timezone());
     }
 
@@ -45,5 +53,22 @@ public class IntegrationSettingsLogger {
 
     private String defaultIfBlank(String value, String defaultValue) {
         return value == null || value.isBlank() ? defaultValue : value;
+    }
+
+    private String join(Iterable<String> values) {
+        if (values == null) {
+            return null;
+        }
+        StringBuilder builder = new StringBuilder();
+        for (String value : values) {
+            if (value == null || value.isBlank()) {
+                continue;
+            }
+            if (!builder.isEmpty()) {
+                builder.append(", ");
+            }
+            builder.append(value);
+        }
+        return builder.isEmpty() ? null : builder.toString();
     }
 }
