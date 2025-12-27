@@ -1,12 +1,14 @@
 package com.example.vacationchecker.service;
 
 import com.example.vacationchecker.config.SlackProperties;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -15,6 +17,7 @@ public class SlackApiDirectoryService implements SlackDirectoryService {
     private static final String SLACK_API_BASE = "https://slack.com/api";
     private static final String USERGROUP_PREFIX = "<!subteam^";
     private static final String CHANNEL_PREFIX = "<#";
+    private static final String USER_PREFIX = "<@";
 
     private final SlackProperties slackProperties;
     private final RestClient restClient;
@@ -58,15 +61,47 @@ public class SlackApiDirectoryService implements SlackDirectoryService {
         return List.of();
     }
 
-    private List<String> resolveGroupMembers(String mention) {
-        String groupId = extractUserGroupId(mention);
-        if (!StringUtils.hasText(groupId)) {
-            String handle = stripPrefix(mention, "@");
-            groupId = resolveUserGroupByHandle(handle).map(SlackUserGroup::id).orElse(null);
+    @Override
+    public Optional<String> resolveUserEmail(String mention) {
+        if (!StringUtils.hasText(mention) || !StringUtils.hasText(slackProperties.botToken())) {
+            return Optional.empty();
         }
-        if (!StringUtils.hasText(groupId)) {
+        String resolvedUserId = extractUserId(mention);
+        if (!StringUtils.hasText(resolvedUserId)) {
+            String handle = stripPrefix(mention, "@");
+            resolvedUserId = resolveUserIdByHandle(handle);
+        }
+        if (!StringUtils.hasText(resolvedUserId)) {
+            return Optional.empty();
+        }
+        String userId = resolvedUserId;
+        SlackUserInfoResponse response = restClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/users.info")
+                        .queryParam("user", userId)
+                        .build())
+                .headers(this::applyAuth)
+                .retrieve()
+                .body(SlackUserInfoResponse.class);
+        if (response == null || !response.ok() || response.user() == null) {
+            return Optional.empty();
+        }
+        SlackUserProfile profile = response.user().profile();
+        if (profile == null || !StringUtils.hasText(profile.email())) {
+            return Optional.empty();
+        }
+        return Optional.of(profile.email());
+    }
+
+    private List<String> resolveGroupMembers(String mention) {
+        String resolvedGroupId = extractUserGroupId(mention);
+        if (!StringUtils.hasText(resolvedGroupId)) {
+            String handle = stripPrefix(mention, "@");
+            resolvedGroupId = resolveUserGroupByHandle(handle).map(SlackUserGroup::id).orElse(null);
+        }
+        if (!StringUtils.hasText(resolvedGroupId)) {
             return List.of();
         }
+        String groupId = resolvedGroupId;
         SlackUserGroupUsersResponse response = restClient.get()
                 .uri(uriBuilder -> uriBuilder.path("/usergroups.users.list")
                         .queryParam("usergroup", groupId)
@@ -100,14 +135,15 @@ public class SlackApiDirectoryService implements SlackDirectoryService {
     }
 
     private List<String> resolveChannelMembers(String mention) {
-        String channelId = extractChannelId(mention);
-        if (!StringUtils.hasText(channelId)) {
+        String resolvedChannelId = extractChannelId(mention);
+        if (!StringUtils.hasText(resolvedChannelId)) {
             String name = stripPrefix(mention, "#");
-            channelId = resolveChannelIdByName(name);
+            resolvedChannelId = resolveChannelIdByName(name);
         }
-        if (!StringUtils.hasText(channelId)) {
+        if (!StringUtils.hasText(resolvedChannelId)) {
             return List.of();
         }
+        String channelId = resolvedChannelId;
         SlackConversationMembersResponse response = restClient.get()
                 .uri(uriBuilder -> uriBuilder.path("/conversations.members")
                         .queryParam("channel", channelId)
@@ -141,6 +177,28 @@ public class SlackApiDirectoryService implements SlackDirectoryService {
         return response.channels().stream()
                 .filter(channel -> name.equalsIgnoreCase(channel.name()))
                 .map(SlackConversation::id)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String resolveUserIdByHandle(String handle) {
+        if (!StringUtils.hasText(handle)) {
+            return null;
+        }
+        SlackUserListResponse response = restClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/users.list")
+                        .queryParam("limit", 1000)
+                        .build())
+                .headers(this::applyAuth)
+                .retrieve()
+                .body(SlackUserListResponse.class);
+        if (response == null || !response.ok() || response.members() == null) {
+            return null;
+        }
+        String normalizedHandle = handle.toLowerCase(Locale.ROOT);
+        return response.members().stream()
+                .filter(member -> handleMatches(member, normalizedHandle))
+                .map(SlackUser::id)
                 .findFirst()
                 .orElse(null);
     }
@@ -182,6 +240,27 @@ public class SlackApiDirectoryService implements SlackDirectoryService {
         return mention.substring(start, end);
     }
 
+    private String extractUserId(String mention) {
+        if (!StringUtils.hasText(mention)) {
+            return null;
+        }
+        if (mention.startsWith(USER_PREFIX)) {
+            int start = USER_PREFIX.length();
+            int end = mention.indexOf('|');
+            if (end == -1) {
+                end = mention.indexOf('>');
+            }
+            if (end <= start) {
+                return null;
+            }
+            return mention.substring(start, end);
+        }
+        if (mention.startsWith("@")) {
+            return null;
+        }
+        return mention;
+    }
+
     private String stripPrefix(String value, String prefix) {
         if (!StringUtils.hasText(value)) {
             return null;
@@ -194,6 +273,25 @@ public class SlackApiDirectoryService implements SlackDirectoryService {
             return "";
         }
         return "<@" + userId + ">";
+    }
+
+    private boolean handleMatches(SlackUser member, String normalizedHandle) {
+        if (member == null) {
+            return false;
+        }
+        if (StringUtils.hasText(member.name()) && member.name().equalsIgnoreCase(normalizedHandle)) {
+            return true;
+        }
+        SlackUserProfile profile = member.profile();
+        if (profile == null) {
+            return false;
+        }
+        return equalsIgnoreCase(profile.displayName(), normalizedHandle)
+                || equalsIgnoreCase(profile.realName(), normalizedHandle);
+    }
+
+    private boolean equalsIgnoreCase(String value, String otherLowercased) {
+        return StringUtils.hasText(value) && value.toLowerCase(Locale.ROOT).equals(otherLowercased);
     }
 
     private record SlackUserGroupListResponse(
@@ -230,6 +328,34 @@ public class SlackApiDirectoryService implements SlackDirectoryService {
     private record SlackConversationMembersResponse(
             boolean ok,
             List<String> members
+    ) {
+    }
+
+    private record SlackUserListResponse(
+            boolean ok,
+            List<SlackUser> members
+    ) {
+    }
+
+    private record SlackUserInfoResponse(
+            boolean ok,
+            SlackUser user
+    ) {
+    }
+
+    private record SlackUser(
+            String id,
+            String name,
+            SlackUserProfile profile
+    ) {
+    }
+
+    private record SlackUserProfile(
+            String email,
+            @JsonAlias("display_name")
+            String displayName,
+            @JsonAlias("real_name")
+            String realName
     ) {
     }
 }
