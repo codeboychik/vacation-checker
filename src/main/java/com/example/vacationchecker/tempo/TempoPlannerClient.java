@@ -13,7 +13,7 @@ import java.util.Optional;
 @Component
 public class TempoPlannerClient {
 
-    private static final String DEFAULT_PLANS_PATH = "/rest/tempo-planning/1/plans";
+    private static final String DEFAULT_PLANS_PATH = "/4/plans";
 
     private final CapacityPlannerProperties properties;
     private final RestClient restClient;

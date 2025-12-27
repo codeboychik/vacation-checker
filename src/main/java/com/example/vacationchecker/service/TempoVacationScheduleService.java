@@ -18,17 +18,23 @@ public class TempoVacationScheduleService implements VacationScheduleService {
 
     private final TempoPlannerClient plannerClient;
     private final CapacityPlannerProperties properties;
+    private final SlackDirectoryService slackDirectoryService;
+    private final JiraUserDirectoryService jiraUserDirectoryService;
 
     public TempoVacationScheduleService(TempoPlannerClient plannerClient,
-                                        CapacityPlannerProperties properties) {
+                                        CapacityPlannerProperties properties,
+                                        SlackDirectoryService slackDirectoryService,
+                                        JiraUserDirectoryService jiraUserDirectoryService) {
         this.plannerClient = plannerClient;
         this.properties = properties;
+        this.slackDirectoryService = slackDirectoryService;
+        this.jiraUserDirectoryService = jiraUserDirectoryService;
     }
 
     @Override
     public List<VacationEntry> findUpcomingVacations(String userMention, LocalDate startInclusive,
                                                      LocalDate endInclusive) {
-        String assignee = normalizeAssignee(userMention);
+        String assignee = resolveAssignee(userMention);
         if (!StringUtils.hasText(assignee)) {
             return List.of();
         }
@@ -86,6 +92,13 @@ public class TempoVacationScheduleService implements VacationScheduleService {
             return null;
         }
         return userMention.startsWith("@") ? userMention.substring(1) : userMention;
+    }
+
+    private String resolveAssignee(String userMention) {
+        String fallbackAssignee = normalizeAssignee(userMention);
+        return slackDirectoryService.resolveUserEmail(userMention)
+                .flatMap(jiraUserDirectoryService::findAccountIdByEmail)
+                .orElse(fallbackAssignee);
     }
 
     private String firstNonBlank(String... values) {
