@@ -34,12 +34,13 @@ public class TempoVacationScheduleService implements VacationScheduleService {
     @Override
     public List<VacationEntry> findUpcomingVacations(String userMention, LocalDate startInclusive,
                                                      LocalDate endInclusive) {
-        String assignee = resolveAssignee(userMention);
-        if (!StringUtils.hasText(assignee)) {
+        ResolvedAssignee resolvedAssignee = resolveAssignee(userMention);
+        if (!resolvedAssignee.hasQueryValue()) {
             return List.of();
         }
-        return plannerClient.fetchPlans(assignee, startInclusive, endInclusive).stream()
+        return plannerClient.fetchPlans(resolvedAssignee.queryValue(), startInclusive, endInclusive).stream()
                 .filter(plan -> plan.startDate() != null && plan.endDate() != null)
+                .filter(plan -> matchesAssignee(plan, resolvedAssignee))
                 .filter(this::matchesApprovalStatus)
                 .filter(this::matchesTimeOffType)
                 .map(this::toVacationEntry)
@@ -94,11 +95,69 @@ public class TempoVacationScheduleService implements VacationScheduleService {
         return userMention.startsWith("@") ? userMention.substring(1) : userMention;
     }
 
-    private String resolveAssignee(String userMention) {
+    private ResolvedAssignee resolveAssignee(String userMention) {
         String fallbackAssignee = normalizeAssignee(userMention);
-        return slackDirectoryService.resolveUserEmail(userMention)
-                .flatMap(jiraUserDirectoryService::findAccountIdByEmail)
-                .orElse(fallbackAssignee);
+        String email = slackDirectoryService.resolveUserEmail(userMention).orElse(null);
+        String accountId = StringUtils.hasText(email)
+                ? jiraUserDirectoryService.findAccountIdByEmail(email).orElse(null)
+                : null;
+        return new ResolvedAssignee(accountId, email, fallbackAssignee);
+    }
+
+    private boolean matchesAssignee(TempoPlan plan, ResolvedAssignee assignee) {
+        if (plan == null || assignee == null) {
+            return false;
+        }
+        TempoPlanUser planAssignee = plan.assignee();
+        if (StringUtils.hasText(assignee.accountId())) {
+            return StringUtils.hasText(planAssignee != null ? planAssignee.accountId() : null)
+                    && assignee.accountId().equals(planAssignee.accountId());
+        }
+        if (StringUtils.hasText(assignee.email())) {
+            return StringUtils.hasText(planAssignee != null ? planAssignee.email() : null)
+                    && assignee.email().equalsIgnoreCase(planAssignee.email());
+        }
+        if (!StringUtils.hasText(assignee.fallbackKey())) {
+            return false;
+        }
+        return matchesFallback(planAssignee, assignee.fallbackKey());
+    }
+
+    private boolean matchesFallback(TempoPlanUser planAssignee, String fallbackKey) {
+        if (planAssignee == null || !StringUtils.hasText(fallbackKey)) {
+            return false;
+        }
+        if (StringUtils.hasText(planAssignee.userKey()) && fallbackKey.equalsIgnoreCase(planAssignee.userKey())) {
+            return true;
+        }
+        if (StringUtils.hasText(planAssignee.displayName())
+                && fallbackKey.equalsIgnoreCase(planAssignee.displayName())) {
+            return true;
+        }
+        return StringUtils.hasText(planAssignee.email())
+                && fallbackKey.equalsIgnoreCase(planAssignee.email());
+    }
+
+    private record ResolvedAssignee(
+            String accountId,
+            String email,
+            String fallbackKey
+    ) {
+        private boolean hasQueryValue() {
+            return StringUtils.hasText(accountId)
+                    || StringUtils.hasText(email)
+                    || StringUtils.hasText(fallbackKey);
+        }
+
+        private String queryValue() {
+            if (StringUtils.hasText(accountId)) {
+                return accountId;
+            }
+            if (StringUtils.hasText(email)) {
+                return email;
+            }
+            return fallbackKey;
+        }
     }
 
     private String firstNonBlank(String... values) {
