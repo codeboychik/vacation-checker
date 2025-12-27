@@ -15,6 +15,8 @@ public record TempoPlan(
         String issueKey,
         TempoPlanIssue issue,
         TempoPlanUser assignee,
+        @JsonAlias({"planApproval", "plan_approval"})
+        TempoPlanApproval planApproval,
         @JsonAlias({"startDate", "start_date"})
         @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
         LocalDate startDate,
@@ -34,4 +36,21 @@ public record TempoPlan(
         @JsonAlias({"approvedBy", "approved_by"})
         String approvedBy
 ) {
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record TempoPlanApproval(
+            TempoPlanApprovalUser actor,
+            TempoPlanApprovalUser requester,
+            TempoPlanApprovalUser reviewer,
+            String status
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record TempoPlanApprovalUser(
+            @JsonAlias({"accountId", "account_id"})
+            String accountId,
+            String self
+    ) {
+    }
 }

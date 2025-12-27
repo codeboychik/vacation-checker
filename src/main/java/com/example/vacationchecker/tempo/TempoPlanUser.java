@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record TempoPlanUser(
-        @JsonAlias({"accountId", "account_id"})
+        @JsonAlias({"accountId", "account_id", "id"})
         String accountId,
         @JsonAlias({"userKey", "user_key"})
         String userKey,

@@ -53,7 +53,10 @@ public class TempoVacationScheduleService implements VacationScheduleService {
         if (approvedStatuses == null || approvedStatuses.isEmpty()) {
             return true;
         }
-        String planStatus = firstNonBlank(plan.approvalStatus(), plan.status());
+        String planStatus = firstNonBlank(
+                plan.approvalStatus(),
+                plan.planApproval() != null ? plan.planApproval().status() : null,
+                plan.status());
         if (!StringUtils.hasText(planStatus)) {
             return false;
         }
@@ -84,7 +87,11 @@ public class TempoVacationScheduleService implements VacationScheduleService {
                 "TIME-OFF");
         String summary = firstNonBlank(issue != null ? issue.summary() : null, plan.description(), "Planned time off");
         String reviewer = firstNonBlank(plan.approvedBy(), "Tempo Planner");
-        String status = firstNonBlank(plan.approvalStatus(), plan.status(), "Planned");
+        String status = firstNonBlank(
+                plan.approvalStatus(),
+                plan.planApproval() != null ? plan.planApproval().status() : null,
+                plan.status(),
+                "Planned");
         return new VacationEntry(issueKey, summary, reviewer, plan.startDate(), plan.endDate(), status);
     }
 
@@ -126,6 +133,10 @@ public class TempoVacationScheduleService implements VacationScheduleService {
     private boolean matchesFallback(TempoPlanUser planAssignee, String fallbackKey) {
         if (planAssignee == null || !StringUtils.hasText(fallbackKey)) {
             return false;
+        }
+        if (StringUtils.hasText(planAssignee.accountId())
+                && fallbackKey.equalsIgnoreCase(planAssignee.accountId())) {
+            return true;
         }
         if (StringUtils.hasText(planAssignee.userKey()) && fallbackKey.equalsIgnoreCase(planAssignee.userKey())) {
             return true;
