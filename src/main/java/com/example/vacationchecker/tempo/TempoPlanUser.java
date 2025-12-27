@@ -12,6 +12,8 @@ public record TempoPlanUser(
         @JsonAlias({"displayName", "display_name"})
         String displayName,
         @JsonAlias({"email", "emailAddress"})
-        String email
+        String email,
+        String self,
+        String type
 ) {
 }

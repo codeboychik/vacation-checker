@@ -83,10 +83,20 @@ public class TempoVacationScheduleService implements VacationScheduleService {
 
     private VacationEntry toVacationEntry(TempoPlan plan) {
         TempoPlanIssue issue = plan.issue();
-        String issueKey = firstNonBlank(plan.issueKey(), issue != null ? issue.key() : null, plan.planId(), plan.id(),
+        String issueKey = firstNonBlank(
+                plan.issueKey(),
+                issue != null ? issue.key() : null,
+                plan.planItem() != null ? plan.planItem().id() : null,
+                plan.planId(),
+                plan.id(),
                 "TIME-OFF");
         String summary = firstNonBlank(issue != null ? issue.summary() : null, plan.description(), "Planned time off");
-        String reviewer = firstNonBlank(plan.approvedBy(), "Tempo Planner");
+        String reviewer = firstNonBlank(
+                plan.approvedBy(),
+                plan.planApproval() != null && plan.planApproval().reviewer() != null
+                        ? plan.planApproval().reviewer().accountId()
+                        : null,
+                "Tempo Planner");
         String status = firstNonBlank(
                 plan.approvalStatus(),
                 plan.planApproval() != null ? plan.planApproval().status() : null,
