@@ -1,6 +1,6 @@
 # Integration configuration
 
-Use these settings when replacing the sample in-memory services with real Slack and Tempo Planner backends. Copy `env.example` to `.env` and populate the variables below so Spring can read them at startup.
+Use these settings to wire real Slack and Tempo Planner backends. Copy `env.example` to `.env` and populate the variables below so Spring can read them at startup.
 
 ## Slack app configuration
 - **Signing Secret**: Needed to verify `/vacation` requests (`SLACK_SIGNING_SECRET`).

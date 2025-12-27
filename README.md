@@ -15,7 +15,7 @@ Spring Boot Slack slash-command app that surfaces upcoming, reviewer-approved va
 - `/vacation @group` — resolves the Slack user group, and returns a timeline for each member in one response.
 - `/vacation #channel` — resolves the channel to its members and returns their timelines in the same response.
 
-This sample ships with in-memory data for Slack membership, and it uses the Tempo Planner API for real vacation timelines. You can still wire Jira-based time-off logic by swapping the `VacationScheduleService` implementation.
+The app uses the Tempo Planner API for real vacation timelines. You can still wire Jira-based time-off logic by swapping the `VacationScheduleService` implementation.
 
 ## Integration configuration
 For production hookups to Slack and Tempo Planner, capture the required tokens, URLs, and field mappings listed in [`docs/integration.md`](docs/integration.md).
