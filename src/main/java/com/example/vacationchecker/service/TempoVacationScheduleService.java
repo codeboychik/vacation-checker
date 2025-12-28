@@ -26,13 +26,12 @@ public class TempoVacationScheduleService implements VacationScheduleService {
     }
 
     @Override
-    public List<VacationEntry> findUpcomingVacations(String userMention, LocalDate startInclusive,
+    public List<VacationEntry> findUpcomingVacations(String accountId, LocalDate startInclusive,
                                                      LocalDate endInclusive) {
-        String assignee = normalizeAssignee(userMention);
-        if (!StringUtils.hasText(assignee)) {
+        if (!StringUtils.hasText(accountId)) {
             return List.of();
         }
-        return plannerClient.fetchPlans(assignee, startInclusive, endInclusive).stream()
+        return plannerClient.fetchPlans(accountId, startInclusive, endInclusive).stream()
                 .filter(plan -> plan.startDate() != null && plan.endDate() != null)
                 .filter(this::matchesApprovalStatus)
                 .filter(this::matchesTimeOffType)
@@ -42,17 +41,11 @@ public class TempoVacationScheduleService implements VacationScheduleService {
     }
 
     private boolean matchesApprovalStatus(TempoPlan plan) {
-        List<String> approvedStatuses = properties.approvedStatuses();
-        if (approvedStatuses == null || approvedStatuses.isEmpty()) {
-            return true;
-        }
         String planStatus = firstNonBlank(plan.approvalStatus(), plan.status());
         if (!StringUtils.hasText(planStatus)) {
             return false;
         }
-        return approvedStatuses.stream()
-                .filter(StringUtils::hasText)
-                .anyMatch(status -> status.equalsIgnoreCase(planStatus));
+        return "approved".equalsIgnoreCase(planStatus);
     }
 
     private boolean matchesTimeOffType(TempoPlan plan) {
@@ -79,13 +72,6 @@ public class TempoVacationScheduleService implements VacationScheduleService {
         String reviewer = firstNonBlank(plan.approvedBy(), "Tempo Planner");
         String status = firstNonBlank(plan.approvalStatus(), plan.status(), "Planned");
         return new VacationEntry(issueKey, summary, reviewer, plan.startDate(), plan.endDate(), status);
-    }
-
-    private String normalizeAssignee(String userMention) {
-        if (!StringUtils.hasText(userMention)) {
-            return null;
-        }
-        return userMention.startsWith("@") ? userMention.substring(1) : userMention;
     }
 
     private String firstNonBlank(String... values) {

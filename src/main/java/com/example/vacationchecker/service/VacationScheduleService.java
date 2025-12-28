@@ -6,5 +6,5 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface VacationScheduleService {
-    List<VacationEntry> findUpcomingVacations(String userMention, LocalDate startInclusive, LocalDate endInclusive);
+    List<VacationEntry> findUpcomingVacations(String accountId, LocalDate startInclusive, LocalDate endInclusive);
 }
