@@ -36,7 +36,7 @@ public class TempoPlannerClient {
                         .path(resolvePlansPath())
                         .queryParam("from", startDate)
                         .queryParam("to", endDate)
-                        .queryParam("assignee", assigneeKey)
+                        .queryParam("accountIds", assigneeKey)
                         .queryParamIfPresent("scheduleId", Optional.ofNullable(properties.scheduleId()).filter(StringUtils::hasText))
                         .build())
                 .headers(headers -> applyAuthHeader(headers))

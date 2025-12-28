@@ -15,6 +15,7 @@ public record TempoPlan(
         String issueKey,
         TempoPlanIssue issue,
         TempoPlanUser assignee,
+        TempoPlanItem planItem,
         @JsonAlias({"startDate", "start_date"})
         @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
         LocalDate startDate,
@@ -24,6 +25,7 @@ public record TempoPlan(
         String description,
         @JsonAlias({"approvalStatus", "approval_status"})
         String approvalStatus,
+        TempoPlanApproval planApproval,
         String status,
         @JsonAlias({"planType", "plan_type"})
         String planType,

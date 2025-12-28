@@ -41,7 +41,11 @@ public class TempoVacationScheduleService implements VacationScheduleService {
     }
 
     private boolean matchesApprovalStatus(TempoPlan plan) {
-        String planStatus = firstNonBlank(plan.approvalStatus(), plan.status());
+        String planStatus = firstNonBlank(
+                plan.planApproval() != null ? plan.planApproval().status() : null,
+                plan.approvalStatus(),
+                plan.status()
+        );
         if (!StringUtils.hasText(planStatus)) {
             return false;
         }
@@ -66,8 +70,14 @@ public class TempoVacationScheduleService implements VacationScheduleService {
 
     private VacationEntry toVacationEntry(TempoPlan plan) {
         TempoPlanIssue issue = plan.issue();
-        String issueKey = firstNonBlank(plan.issueKey(), issue != null ? issue.key() : null, plan.planId(), plan.id(),
-                "TIME-OFF");
+        String issueKey = firstNonBlank(
+                plan.issueKey(),
+                issue != null ? issue.key() : null,
+                plan.planItem() != null ? plan.planItem().id() : null,
+                plan.planId(),
+                plan.id(),
+                "TIME-OFF"
+        );
         String summary = firstNonBlank(issue != null ? issue.summary() : null, plan.description(), "Planned time off");
         String reviewer = firstNonBlank(plan.approvedBy(), "Tempo Planner");
         String status = firstNonBlank(plan.approvalStatus(), plan.status(), "Planned");
