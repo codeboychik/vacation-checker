@@ -7,12 +7,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public record TempoPlanUser(
         @JsonAlias({"id", "accountId", "account_id"})
         String accountId,
-        @JsonAlias({"userKey", "user_key"})
-        String userKey,
-        @JsonAlias({"displayName", "display_name"})
-        String displayName,
-        @JsonAlias({"email", "emailAddress"})
-        String email,
         String type,
         String self
 ) {
