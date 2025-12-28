@@ -8,6 +8,7 @@ import com.example.vacationchecker.service.SlackDirectoryService;
 import com.example.vacationchecker.service.SlackUserInfoService;
 import com.example.vacationchecker.service.VacationScheduleService;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -74,12 +75,14 @@ public class SlackCommandService {
 
     private VacationTimeline buildTimelineForUser(String userMention, LocalDate start, LocalDate end) {
         Optional<String> email = slackUserInfoService.resolveEmail(userMention);
-        Optional<String> accountId = email.flatMap(jiraUserDirectoryService::resolveAccountIdByEmail);
-        if (accountId.isEmpty()) {
+        Optional<JiraUserDirectoryService.JiraUserProfile> profile = email.flatMap(jiraUserDirectoryService::resolveUserByEmail);
+        if (profile.isEmpty()) {
             return new VacationTimeline(userMention, TargetType.USER, List.of());
         }
-        return new VacationTimeline(userMention, TargetType.USER,
-                vacationScheduleService.findUpcomingVacations(accountId.get(), start, end));
+        JiraUserDirectoryService.JiraUserProfile userProfile = profile.get();
+        String subject = StringUtils.hasText(userProfile.displayName()) ? userProfile.displayName() : userMention;
+        return new VacationTimeline(subject, TargetType.USER,
+                vacationScheduleService.findUpcomingVacations(userProfile.accountId(), start, end));
     }
 
     private List<VacationTimeline> buildTimelinesForCollection(CommandTarget target, LocalDate start, LocalDate end) {

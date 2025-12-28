@@ -25,7 +25,7 @@ public class JiraApiUserDirectoryService implements JiraUserDirectoryService {
     }
 
     @Override
-    public Optional<String> resolveAccountIdByEmail(String email) {
+    public Optional<JiraUserProfile> resolveUserByEmail(String email) {
         if (!StringUtils.hasText(email) || !StringUtils.hasText(jiraProperties.baseUrl())) {
             return Optional.empty();
         }
@@ -47,7 +47,7 @@ public class JiraApiUserDirectoryService implements JiraUserDirectoryService {
         if (selected == null || !StringUtils.hasText(selected.accountId())) {
             return Optional.empty();
         }
-        return Optional.of(selected.accountId());
+        return Optional.of(new JiraUserProfile(selected.accountId(), selected.displayName()));
     }
 
     private void applyAuth(HttpHeaders headers) {
