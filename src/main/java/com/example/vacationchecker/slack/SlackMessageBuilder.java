@@ -74,10 +74,9 @@ public class SlackMessageBuilder {
             int span = Math.min(7, remaining);
             LocalDate weekStart = cursor;
             LocalDate weekEnd = cursor.plusDays(span - 1L);
+            String range = DATE_FORMAT.format(weekStart) + "–" + DATE_FORMAT.format(weekEnd);
             StringBuilder line = new StringBuilder();
-            line.append(DATE_FORMAT.format(weekStart))
-                    .append("–")
-                    .append(DATE_FORMAT.format(weekEnd))
+            line.append(String.format("%-12s", range))
                     .append(" ");
             for (int i = 0; i < span; i++) {
                 LocalDate day = weekStart.plusDays(i);
