@@ -67,9 +67,10 @@ public class SlackApiDirectoryService implements SlackDirectoryService {
         if (!StringUtils.hasText(groupId)) {
             return List.of();
         }
+        String resolvedGroupId = groupId;
         SlackUserGroupUsersResponse response = restClient.get()
                 .uri(uriBuilder -> uriBuilder.path("/usergroups.users.list")
-                        .queryParam("usergroup", groupId)
+                        .queryParam("usergroup", resolvedGroupId)
                         .build())
                 .headers(this::applyAuth)
                 .retrieve()
@@ -108,9 +109,10 @@ public class SlackApiDirectoryService implements SlackDirectoryService {
         if (!StringUtils.hasText(channelId)) {
             return List.of();
         }
+        String resolvedChannelId = channelId;
         SlackConversationMembersResponse response = restClient.get()
                 .uri(uriBuilder -> uriBuilder.path("/conversations.members")
-                        .queryParam("channel", channelId)
+                        .queryParam("channel", resolvedChannelId)
                         .build())
                 .headers(this::applyAuth)
                 .retrieve()

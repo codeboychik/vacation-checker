@@ -1,9 +1,7 @@
 package com.example.vacationchecker.service;
 
-import com.example.vacationchecker.config.CapacityPlannerProperties;
 import com.example.vacationchecker.model.VacationEntry;
 import com.example.vacationchecker.tempo.TempoPlan;
-import com.example.vacationchecker.tempo.TempoPlanIssue;
 import com.example.vacationchecker.tempo.TempoPlannerClient;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -11,81 +9,58 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 
 @Service
 public class TempoVacationScheduleService implements VacationScheduleService {
 
     private final TempoPlannerClient plannerClient;
-    private final CapacityPlannerProperties properties;
 
-    public TempoVacationScheduleService(TempoPlannerClient plannerClient,
-                                        CapacityPlannerProperties properties) {
+    public TempoVacationScheduleService(TempoPlannerClient plannerClient) {
         this.plannerClient = plannerClient;
-        this.properties = properties;
     }
 
     @Override
-    public List<VacationEntry> findUpcomingVacations(String userMention, LocalDate startInclusive,
+    public List<VacationEntry> findUpcomingVacations(String accountId, LocalDate startInclusive,
                                                      LocalDate endInclusive) {
-        String assignee = normalizeAssignee(userMention);
-        if (!StringUtils.hasText(assignee)) {
+        if (!StringUtils.hasText(accountId)) {
             return List.of();
         }
-        return plannerClient.fetchPlans(assignee, startInclusive, endInclusive).stream()
+        return plannerClient.fetchPlans(accountId, startInclusive, endInclusive).stream()
                 .filter(plan -> plan.startDate() != null && plan.endDate() != null)
                 .filter(this::matchesApprovalStatus)
-                .filter(this::matchesTimeOffType)
                 .map(this::toVacationEntry)
                 .sorted(Comparator.comparing(VacationEntry::startDate))
                 .toList();
     }
 
     private boolean matchesApprovalStatus(TempoPlan plan) {
-        List<String> approvedStatuses = properties.approvedStatuses();
-        if (approvedStatuses == null || approvedStatuses.isEmpty()) {
-            return true;
-        }
-        String planStatus = firstNonBlank(plan.approvalStatus(), plan.status());
+        String planStatus = firstNonBlank(
+                plan.planApproval() != null ? plan.planApproval().status() : null
+        );
         if (!StringUtils.hasText(planStatus)) {
             return false;
         }
-        return approvedStatuses.stream()
-                .filter(StringUtils::hasText)
-                .anyMatch(status -> status.equalsIgnoreCase(planStatus));
-    }
-
-    private boolean matchesTimeOffType(TempoPlan plan) {
-        List<String> timeOffTypes = properties.timeOffTypes();
-        if (timeOffTypes == null || timeOffTypes.isEmpty()) {
-            return true;
-        }
-        String planType = firstNonBlank(plan.planType(), plan.planItemType(), plan.type(), plan.classification());
-        if (!StringUtils.hasText(planType)) {
-            return false;
-        }
-        String normalizedPlanType = planType.toLowerCase(Locale.ROOT);
-        return timeOffTypes.stream()
-                .filter(StringUtils::hasText)
-                .map(type -> type.toLowerCase(Locale.ROOT))
-                .anyMatch(normalizedPlanType::contains);
+        return "approved".equalsIgnoreCase(planStatus);
     }
 
     private VacationEntry toVacationEntry(TempoPlan plan) {
-        TempoPlanIssue issue = plan.issue();
-        String issueKey = firstNonBlank(plan.issueKey(), issue != null ? issue.key() : null, plan.planId(), plan.id(),
-                "TIME-OFF");
-        String summary = firstNonBlank(issue != null ? issue.summary() : null, plan.description(), "Planned time off");
-        String reviewer = firstNonBlank(plan.approvedBy(), "Tempo Planner");
-        String status = firstNonBlank(plan.approvalStatus(), plan.status(), "Planned");
+        String issueKey = firstNonBlank(
+                plan.planItem() != null ? plan.planItem().id() : null,
+                plan.id(),
+                "TIME-OFF"
+        );
+        String summary = "Planned time off";
+        String reviewer = firstNonBlank(
+                plan.planApproval() != null && plan.planApproval().reviewer() != null
+                        ? plan.planApproval().reviewer().accountId()
+                        : null,
+                "Tempo Planner"
+        );
+        String status = firstNonBlank(
+                plan.planApproval() != null ? plan.planApproval().status() : null,
+                "Planned"
+        );
         return new VacationEntry(issueKey, summary, reviewer, plan.startDate(), plan.endDate(), status);
-    }
-
-    private String normalizeAssignee(String userMention) {
-        if (!StringUtils.hasText(userMention)) {
-            return null;
-        }
-        return userMention.startsWith("@") ? userMention.substring(1) : userMention;
     }
 
     private String firstNonBlank(String... values) {
